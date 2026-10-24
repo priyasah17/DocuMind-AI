@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: documind-ai-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
