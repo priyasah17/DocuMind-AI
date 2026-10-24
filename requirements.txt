@@ -13,3 +13,4 @@ groq
 python-dotenv
 pytesseract
 Pillow
+fastembed==0.9.1

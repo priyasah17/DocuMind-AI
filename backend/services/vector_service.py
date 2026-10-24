@@ -1,33 +1,17 @@
 
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 
-
-# --------------------------------------------------
-# Embedding model
-# --------------------------------------------------
 
 def get_embeddings():
-    """Load the embedding model used by DocuMind AI."""
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    """Load the lightweight FastEmbed embedding model."""
+    return FastEmbedEmbeddings(
+       model_name="BAAI/bge-small-en-v1.5"
     )
 
 
-# --------------------------------------------------
-# Create FAISS vector store
-# --------------------------------------------------
-
 def create_vector_store(chunks: list[dict]) -> FAISS:
-    """
-    Convert text chunks into embeddings and create a FAISS index.
-
-    Each chunk must contain:
-    - text
-    - document_id
-    - filename
-    - page_number
-    """
+    """Create a FAISS index from document chunks."""
 
     if not chunks:
         raise ValueError("No text chunks available to index.")
@@ -35,64 +19,40 @@ def create_vector_store(chunks: list[dict]) -> FAISS:
     texts = []
     metadatas = []
 
-    for index, chunk in enumerate(chunks):
-        # Validate the chunk text.
+    for chunk in chunks:
         text = chunk.get("text", "")
 
         if not isinstance(text, str) or not text.strip():
             continue
 
-        # Preserve metadata for source citations.
-        metadata = {
+        texts.append(text.strip())
+        metadatas.append({
             "document_id": chunk.get("document_id", ""),
             "filename": chunk.get("filename", "Unknown document"),
             "page_number": chunk.get("page_number", 1),
-        }
-
-        texts.append(text.strip())
-        metadatas.append(metadata)
+        })
 
     if not texts:
-        raise ValueError(
-            "No valid text chunks found. "
-            "Check PDF extraction and chunk_service.py."
-        )
+        raise ValueError("No valid text chunks found.")
 
     embeddings = get_embeddings()
 
-    vector_store = FAISS.from_texts(
+    return FAISS.from_texts(
         texts=texts,
         embedding=embeddings,
         metadatas=metadatas,
     )
 
-    return vector_store
 
-
-# --------------------------------------------------
-# Save FAISS vector store
-# --------------------------------------------------
-
-def save_vector_store(
-    vector_store: FAISS,
-    index_path: str,
-) -> None:
-    """Save the FAISS index to a local directory."""
-
+def save_vector_store(vector_store: FAISS, index_path: str) -> None:
+    """Save the FAISS index."""
     vector_store.save_local(index_path)
 
 
-# --------------------------------------------------
-# Load FAISS vector store
-# --------------------------------------------------
-
 def load_vector_store(index_path: str) -> FAISS:
-    """Load a previously saved local FAISS index."""
-
-    embeddings = get_embeddings()
-
+    """Load an existing FAISS index."""
     return FAISS.load_local(
         index_path,
-        embeddings,
+        get_embeddings(),
         allow_dangerous_deserialization=True,
     )
