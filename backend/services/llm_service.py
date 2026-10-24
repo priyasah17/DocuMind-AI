@@ -1,10 +1,10 @@
+
 import os
 
 from dotenv import load_dotenv
 from groq import Groq
 
 
-# Load environment variables from the project root
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..")
 )
@@ -17,14 +17,18 @@ if not api_key:
         "GROQ_API_KEY is missing. Check your project's .env file."
     )
 
-client = Groq(api_key=api_key)
+client = Groq(
+    api_key=api_key,
+    timeout=30.0,
+    max_retries=1,
+)
 
 
 def generate_answer(question: str, context: str) -> str:
-    """Generate an answer based on retrieved document passages."""
+    """Generate an answer based only on retrieved document passages."""
 
     response = client.chat.completions.create(
-       model="openai/gpt-oss-120b",
+        model="openai/gpt-oss-120b",
         messages=[
             {
                 "role": "system",
@@ -32,19 +36,20 @@ def generate_answer(question: str, context: str) -> str:
                     "You are DocuMind AI, a document question-answering "
                     "assistant. Answer using only the supplied context. "
                     "If the answer is missing, say the documents do not "
-                    "provide enough information. Do not invent facts."
-                )
+                    "provide enough information. Do not invent facts. "
+                    "Be concise and accurate."
+                ),
             },
             {
                 "role": "user",
                 "content": (
-                    f"Context:\n{context}\n\n"
+                    f"Context:\n{context[:12000]}\n\n"
                     f"Question: {question}"
-                )
-            }
+                ),
+            },
         ],
         temperature=0.2,
-        max_completion_tokens=700
+        max_completion_tokens=400,
     )
 
     answer = response.choices[0].message.content
